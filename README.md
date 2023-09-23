@@ -72,9 +72,8 @@ pip install -e .
 Install MimicPlay
 ```	
 cd ..
-git clone https://github.com/j96w/MimicPlay-dev.git
-cd MimicPlay-dev
-pip install -r requirements.txt
+git clone https://github.com/j96w/MimicPlay.git
+cd MimicPlay
 pip install -e .
 ```
 
