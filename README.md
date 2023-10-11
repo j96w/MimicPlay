@@ -216,10 +216,10 @@ python vis_processed_human_play_data.py
 ## Citations
 Please cite [MimicPlay](https://mimic-play.github.io/) if you find this repository helpful:
 ```
-@inproceedings{wang2023mimicplay,
-  title={MimicPlay: Long-Horizon Imitation Learning by Watching Human Play},
+@article{wang2023mimicplay,
+  title={Mimicplay: Long-horizon imitation learning by watching human play},
   author={Wang, Chen and Fan, Linxi and Sun, Jiankai and Zhang, Ruohan and Fei-Fei, Li and Xu, Danfei and Zhu, Yuke and Anandkumar, Anima},
-  booktitle={Conference on Robot Learning},
+  journal={arXiv preprint arXiv:2302.12422},
   year={2023}
 }
 ```
