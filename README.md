@@ -87,7 +87,8 @@ mv mimicplay_release_dataset your_installation_path/mimicplay/datasets
 - Transform raw data to image dataset
 ```	
 cd MimicPlay-dev/mimicplay
-python scripts/dataset_states_to_obs.py --dataset 'datasets/playdata/demo.hdf5' --done_mode 0 --camera_names agentview robot0_eye_in_hand --camera_height 84 --camera_width 84 --output_name image_demo_local.hdf5 --exclude-next-obs
+python scripts/preprocess_hdf5.py -i ./datasets/playdata/demo.hdf5 -o ./datasets/playdata/demo_modified.hdf5
+python scripts/dataset_states_to_obs.py --dataset 'datasets/playdata/demo_modified.hdf5' --done_mode 0 --camera_names agentview robot0_eye_in_hand --camera_height 84 --camera_width 84 --output_name image_demo_local.hdf5 --exclude-next-obs
 ```
 - Extract end-effector trajectory for the training of high-level planner
 ```
