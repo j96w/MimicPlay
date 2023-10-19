@@ -86,7 +86,7 @@ mv mimicplay_release_dataset your_installation_path/mimicplay/datasets
 ```
 - Transform raw data to image dataset
 ```	
-cd MimicPlay-dev/mimicplay
+cd MimicPlay/mimicplay
 python scripts/preprocess_hdf5.py -i ./datasets/playdata/demo.hdf5 -o ./datasets/playdata/demo_modified.hdf5
 python scripts/dataset_states_to_obs.py --dataset 'datasets/playdata/demo_modified.hdf5' --done_mode 0 --camera_names agentview robot0_eye_in_hand --camera_height 84 --camera_width 84 --output_name image_demo_local.hdf5 --exclude-next-obs
 ```
@@ -114,7 +114,7 @@ python scripts/convert_playdata_to_robomimic_dataset.py --dataset 'path_to_your_
 MimicPlay is a hirarical arigorithm for learning from play data (no-cut, unlabeled demonstrations), which consists two training stage - (1). Learning goal-conditioned high-level latent planner. (2). Learning plan-guided low-level robot controller.
 - Train high-level latent planner
 ```	
-cd MimicPlay-dev/mimicplay
+cd MimicPlay/mimicplay
 python scripts/train.py --config configs/highlevel.json --dataset 'datasets/playdata/image_demo_local.hdf5'
 ```
 After training, choose the saved checkpoint with the highest evaluation score, use its path as the config of `algo/lowlevel/trained_highlevel_planner` in `configs/lowlevel.json`.
