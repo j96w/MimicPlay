@@ -1,0 +1,7 @@
+**/__pycache__
+*.egg-info
+
+datasets/
+trained_models_highlevel
+
+*.mp4
