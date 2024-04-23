@@ -1,8 +1,3 @@
-# --------------------------------------------------------
-# Tensorflow Faster R-CNN
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Jiasen Lu, Jianwei Yang, based on code from Ross Girshick
-# --------------------------------------------------------
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -15,6 +10,7 @@ import argparse
 import pprint
 import pdb
 import time
+import json
 import cv2
 import torch
 import shutil, copy
@@ -181,7 +177,6 @@ def export_images_from_hdf5(hdf5_path='', target_path='images', demo_name='demo_
     for demo_index in h5py_file.keys():
         if demo_index != demo_name:
             continue
-        # os.makedirs(os.path.join(target_path, demo_index), exist_ok=True)
         os.makedirs(os.path.join(target_path), exist_ok=True)
         demo = h5py_file[demo_index]
         obs = demo['obs']
@@ -192,7 +187,6 @@ def export_images_from_hdf5(hdf5_path='', target_path='images', demo_name='demo_
         for img_idx in range(front_image.shape[0]):
             rgb_img = front_image[img_idx]
             bgr_img = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
-            # cv2.imwrite(os.path.join(target_path, demo_index, '{:06d}.png'.format(img_idx)), bgr_img)
             cv2.imwrite(os.path.join(target_path, '{:06d}.png'.format(img_idx)), bgr_img)
 
 
@@ -284,11 +278,9 @@ if __name__ == '__main__':
         gt_boxes = gt_boxes.cuda()
 
     new_f_out = h5py.File(args.target_hdf5_path[:-5] + '_new.hdf5', "w")
-    # data = f_out['data']
-    # print('data.keys(): ', data.keys())
-    # demo_name_list = ['demo_0', 'demo_1'] + ['demo_2', 'demo_3', 'demo_4']
-    # demo_name_list = ['demo_{}'.format(i) for i in range(len(data.keys()))]
+
     demo_name_list = ['demo_{}'.format(i) for i in range(1)]
+    val_demo_name = 'demo_1'
     front_image_indexes = [1, 2]
     for front_image_index in front_image_indexes:
         if front_image_index == 1:
@@ -324,6 +316,7 @@ if __name__ == '__main__':
                 vis = args.vis
 
                 num_images = len(image)
+                num_samples = 0 # num_images
                 imglist = ['{:06d}.png'.format(i) for i in range(num_images)]
 
                 print('Loaded Photo: {} images.'.format(num_images))
@@ -483,10 +476,6 @@ if __name__ == '__main__':
                         if cv2.waitKey(1) & 0xFF == ord('q'):
                             break
 
-                # clip = mpy.ImageSequenceClip(mpy_frame_list, fps=8)
-                # clip.write_videofile(
-                #     os.path.join(demo_dir, 'vis_{}.mp4'.format(front_image_index)), fps=8)
-
                 print('Writing HDF5 file to {}'.format(args.target_hdf5_path))
                 hand_loc = np.asarray(hand_det_result)[::-1]
                 x = copy.deepcopy(hand_loc[:, :, -2])
@@ -497,11 +486,14 @@ if __name__ == '__main__':
                 shifted_hand_loc_1_array = np.concatenate((hand_loc, hand_loc[-1:]), axis=0)
                 hand_act = shifted_hand_loc_1_array[1:] - shifted_hand_loc_1_array[:-1]
                 print('hand_act.shape: ', hand_act.shape)  # hand_act.shape:  (145, 1, 12)
-
                 obs_path = 'data/'+demo_name+'/obs'
                 new_f_out.create_dataset(obs_path+'/hand_loc_{}'.format(front_image_index), data=hand_loc)
                 new_f_out.create_dataset(obs_path + '/hand_act_{}'.format(front_image_index), data=hand_act)
                 new_f_out.create_dataset(obs_path + '/front_image_{}'.format(front_image_index), data=image)
+                if front_image_index == 1:
+                    new_f_out.create_dataset(obs_path + '/agentview_image'.format(front_image_index), data=image)
+                else:
+                    new_f_out.create_dataset(obs_path + '/agentview_image_{}'.format(front_image_index), data=image)
                 print('new_f_out[obs_path].keys(): ', new_f_out[obs_path].keys())
                 # new_f_out[obs_path].keys():  <KeysViewHDF5 ['front_image_1', 'front_image_2', 'hand_act_1', 'hand_act_2', 'hand_loc_1', 'hand_loc_2']>
                 if front_image_index == 1:
@@ -514,6 +506,7 @@ if __name__ == '__main__':
                     num_future_frame = 10
                     skip_len = 2
                     T = all_hand_loc.shape[0]
+                    num_samples += T-1
                     for i in range(all_hand_loc.shape[0]):
                         each_skip_hand_loc = []
                         for j in range(num_future_frame):
@@ -527,6 +520,10 @@ if __name__ == '__main__':
                     # all_skip_hand_loc.shape:  (145, 10, 1, 4)
                     all_skip_hand_loc = all_skip_hand_loc.reshape(T, -1)
                     new_f_out.create_dataset('data/'+demo_name+'/actions', data=all_skip_hand_loc)
+
+                    new_f_out.create_dataset(obs_path + '/robot0_eef_pos'.format(front_image_index), data=all_hand_loc)
+                    new_f_out.create_dataset(obs_path + '/robot0_eef_pos_future_traj'.format(front_image_index), data=all_skip_hand_loc)
+
                     # 'actions', 'dones', 'interventions', 'next_obs', 'obs', 'policy_acting', 'rewards', 'states', 'user_acting'
                     new_f_out.create_dataset('data/' + demo_name + '/dones', data=np.zeros((T-1)))
                     new_f_out.create_dataset('data/' + demo_name + '/interventions', data=np.zeros((T, 1)))
@@ -534,6 +531,123 @@ if __name__ == '__main__':
                     new_f_out.create_dataset('data/' + demo_name + '/rewards', data=np.zeros((T-1)))
                     new_f_out.create_dataset('data/' + demo_name + '/states', data=np.zeros((0)))
                     new_f_out.create_dataset('data/' + demo_name + '/user_acting', data=np.zeros((T, 1)))
+                    new_f_out['data/{}'.format(demo_name)].attrs["num_samples"] = T - 1
+                    print(new_f_out['data/{}'.format(demo_name)].attrs["num_samples"])
+                    new_f_out.create_dataset('mask/train', data=[demo_name])
+                    new_f_out.create_dataset('mask/valid', data=[val_demo_name])
+                # validation demo name
+                obs_path = 'data/' + val_demo_name + '/obs'
+                new_f_out.create_dataset(obs_path + '/hand_loc_{}'.format(front_image_index), data=hand_loc)
+                new_f_out.create_dataset(obs_path + '/hand_act_{}'.format(front_image_index), data=hand_act)
+                new_f_out.create_dataset(obs_path + '/front_image_{}'.format(front_image_index), data=image)
+                if front_image_index == 1:
+                    new_f_out.create_dataset(obs_path + '/agentview_image_{}'.format(front_image_index), data=image)
+                else:
+                    new_f_out.create_dataset(obs_path + '/agentview_image'.format(front_image_index), data=image)
+                print('new_f_out[obs_path].keys(): ', new_f_out[obs_path].keys())
+                # new_f_out[obs_path].keys():  <KeysViewHDF5 ['front_image_1', 'front_image_2', 'hand_act_1', 'hand_act_2', 'hand_loc_1', 'hand_loc_2']>
+                if front_image_index == 1:
+                    hand_loc_1 = copy.deepcopy(hand_loc)
+                elif front_image_index == 2:
+                    all_hand_loc = np.concatenate((hand_loc_1[:, :, -2:], hand_loc[:, :, -2:]), axis=2)
+                    new_f_out.create_dataset(obs_path + '/hand_loc', data=all_hand_loc)
+                    # print('all_hand_loc.shape: ', all_hand_loc.shape)  # hand_act.shape:  (145, 1, 4)
+                    all_skip_hand_loc = []
+                    num_future_frame = 10
+                    skip_len = 2
+                    T = all_hand_loc.shape[0]
+                    for i in range(all_hand_loc.shape[0]):
+                        each_skip_hand_loc = []
+                        for j in range(num_future_frame):
+                            if i + j * skip_len >= all_hand_loc.shape[0]:
+                                each_skip_hand_loc.append(all_hand_loc[-1])
+                            else:
+                                each_skip_hand_loc.append(all_hand_loc[i + j * skip_len])
+                        all_skip_hand_loc.append(each_skip_hand_loc)
+                    all_skip_hand_loc = np.asarray(all_skip_hand_loc)
+                    # all_skip_hand_loc.shape:  (145, 10, 1, 4)
+                    all_skip_hand_loc = all_skip_hand_loc.reshape(T, -1)
+                    new_f_out.create_dataset('data/' + val_demo_name + '/actions', data=all_skip_hand_loc)
+
+                    new_f_out.create_dataset(obs_path + '/robot0_eef_pos'.format(front_image_index), data=all_hand_loc)
+                    new_f_out.create_dataset(obs_path + '/robot0_eef_pos_future_traj'.format(front_image_index),
+                                             data=all_skip_hand_loc)
+                    # 'actions', 'dones', 'interventions', 'next_obs', 'obs', 'policy_acting', 'rewards', 'states', 'user_acting'
+                    new_f_out.create_dataset('data/' + val_demo_name + '/dones', data=np.zeros((T - 1)))
+                    new_f_out.create_dataset('data/' + val_demo_name + '/interventions', data=np.zeros((T, 1)))
+                    new_f_out.create_dataset('data/' + val_demo_name + '/policy_acting', data=np.zeros((T)))
+                    new_f_out.create_dataset('data/' + val_demo_name + '/rewards', data=np.zeros((T - 1)))
+                    new_f_out.create_dataset('data/' + val_demo_name + '/states', data=np.zeros((0)))
+                    new_f_out.create_dataset('data/' + val_demo_name + '/user_acting', data=np.zeros((T, 1)))
+                    new_f_out['data/{}'.format(val_demo_name)].attrs["num_samples"] = T - 1
+                    print(new_f_out['data/{}'.format(val_demo_name)].attrs["num_samples"])
+
+                data = new_f_out['data']
+                data.attrs['total'] = num_samples # T - 1  # num_samples + num_samples
+                env_meta = {
+                    "env_name": "Libero_Kitchen_Tabletop_Manipulation",
+                    "env_version": "1.4.1",
+                    "type": 1,
+                    "env_kwargs": {
+                        "robots": [
+                            "Panda"
+                        ],
+                        "controller_configs": {
+                            "type": "OSC_POSE",
+                            "input_max": 1,
+                            "input_min": -1,
+                            "output_max": [
+                                0.05,
+                                0.05,
+                                0.05,
+                                0.5,
+                                0.5,
+                                0.5
+                            ],
+                            "output_min": [
+                                -0.05,
+                                -0.05,
+                                -0.05,
+                                -0.5,
+                                -0.5,
+                                -0.5
+                            ],
+                            "kp": 150,
+                            "damping_ratio": 1,
+                            "impedance_mode": "fixed",
+                            "kp_limits": [
+                                0,
+                                300
+                            ],
+                            "damping_ratio_limits": [
+                                0,
+                                10
+                            ],
+                            "position_limits": None,
+                            "orientation_limits": None,
+                            "uncouple_pos_ori": True,
+                            "control_delta": True,
+                            "interpolation": None,
+                            "ramp_ratio": 0.2
+                        },
+                        "bddl_file_name": None,
+                        "reward_shaping": False,
+                        "camera_names": [
+                            "agentview",
+                            "robot0_eye_in_hand"
+                        ],
+                        "camera_heights": 84,
+                        "camera_widths": 84,
+                        "has_renderer": False,
+                        "has_offscreen_renderer": True,
+                        "ignore_done": True,
+                        "use_object_obs": True,
+                        "use_camera_obs": True,
+                        "camera_depths": False,
+                        "render_gpu_device_id": 0
+                    }
+                }
+                data.attrs['env_args'] = json.dumps(env_meta, indent=4)
                 print('Save to {}'.format(args.target_hdf5_path[:-5] + '_new.hdf5'))
 
     new_f_out.close()

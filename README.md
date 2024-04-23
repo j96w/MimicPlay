@@ -206,7 +206,11 @@ python demo_mp4.py
 cd scripts/human_playdata_process/
 python vis_processed_human_play_data.py
 ```
-
+- To train a high-level latent planner using the processed human data, simply
+```
+cd MimicPlay/mimicplay
+python scripts/train.py --config configs/highlevel_human.json --dataset 'PATH_TO_HDF5_FILE'
+```
 -------
 ## Acknowledgement
 - Our environment is based on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO), [robosuite](https://github.com/ARISE-Initiative/robosuite), and [BEHAVIOR BDDL language](https://github.com/StanfordVL/bddl).
